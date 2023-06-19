@@ -1,5 +1,5 @@
 import { DynamicModule, Module, Provider, Type } from "@nestjs/common";
-import { getDataSourceName, getDataSourceToken, TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { getDataSourceToken, TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSource, ObjectType } from 'typeorm';
 import { CUSTOM_REPOSITORY_METADATA } from "./constants";
 

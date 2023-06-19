@@ -14,6 +14,6 @@ import { PostRepository } from "./repositories/post.repository";
     ],
     controllers: [PostController],
     providers: [PostService,PostSubscriber],
-    exports:[PostService,DatebaseModule.forRepository([PostRepository])],
+    exports:[PostService,DatabaseModule.forRepository([PostRepository])],
 })
 export class ContentModule{}

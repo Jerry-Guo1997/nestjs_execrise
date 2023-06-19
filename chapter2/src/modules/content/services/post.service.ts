@@ -3,9 +3,10 @@ import { PostRepository } from "../repositories/post.repository";
 import { PaginateOptions } from "@/modules/database/types";
 import { QueryHook } from "@/modules/database/type";
 import { PostEntity } from "../entities/post.entity";
-import { isFunction, isNil } from "lodash";
+import { isFunction, isNil, omit } from "lodash";
 import { EntityNotFoundError, IsNull, Not, SelectQueryBuilder } from "typeorm";
 import { PostOrderType } from "../constants";
+import { paginate } from "@/modules/database/helpers";
 
 @Injectable()
 export class PostService{
@@ -67,7 +68,7 @@ export class PostService{
                     publishedAt: IsNull(),
                 });
         }
-        newQb = this.queryOrdeyBy(newQb,orderBy);
+        newQb = this.queryOrderBy(newQb,orderBy);
         if(callback) return callback(newQb);
         return newQb;
     }

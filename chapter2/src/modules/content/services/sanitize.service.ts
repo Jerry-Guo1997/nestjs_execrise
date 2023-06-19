@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import merge from 'deepmerge';
 import sanitizeHtml from 'sanitize-html';
+//import sanitizeHtml from 'sanitize-html/dist/sanitize-html.js';
 
 @Injectable()
 export class SanitizeService{

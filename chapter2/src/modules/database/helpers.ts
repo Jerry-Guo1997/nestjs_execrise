@@ -1,6 +1,12 @@
 import { ObjectLiteral, SelectQueryBuilder } from "typeorm";
 import { PaginateOptions, PaginateReturn } from "./types";
 
+/**
+ * 
+ * @param qb 
+ * @param options 
+ * @returns 
+ */
 export const paginate = async <E extends ObjectLiteral>(
     qb: SelectQueryBuilder<E>,
     options: PaginateOptions,
