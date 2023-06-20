@@ -3,7 +3,8 @@ import {
     Column,
     CreateDateColumn,
     Entity,
-    PrimaryGeneratedColumn,
+    PrimaryColumn,
+    //PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
 
@@ -11,7 +12,8 @@ import { PostBodyType } from '../constants';
 
 @Entity('content_posts')
 export class PostEntity extends BaseEntity {
-    @PrimaryGeneratedColumn('uuid')
+    //@PrimaryGeneratedColumn('uuid')
+    @PrimaryColumn({ type: 'varchar',generated:'uuid',length:36})
     id!: string;
 
     @Column({ comment: '文章标题' })
