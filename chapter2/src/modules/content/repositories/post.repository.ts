@@ -1,10 +1,11 @@
-import { CustomRepository } from "@/modules/database/decorators";
-import { PostEntity } from "../entities/post.entity";
-import { Repository } from "typeorm";
+import { Repository } from 'typeorm';
+
+import { PostEntity } from '../entities/post.entity';
+import { CustomRepository } from '@/modules/database/decorators';
 
 @CustomRepository(PostEntity)
 export class PostRepository extends Repository<PostEntity> {
-    buildBaseQB(){
+    buildBaseQB() {
         return this.createQueryBuilder('post');
     }
 }

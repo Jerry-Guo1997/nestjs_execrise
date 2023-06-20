@@ -1,10 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 import merge from 'deepmerge';
 import sanitizeHtml from 'sanitize-html';
-//import sanitizeHtml from 'sanitize-html/dist/sanitize-html.js';
+// import sanitizeHtml from 'sanitize-html/dist/sanitize-html.js';
 
 @Injectable()
-export class SanitizeService{
+export class SanitizeService {
     protected config: sanitizeHtml.IOptions = {};
 
     constructor() {
