@@ -1,4 +1,4 @@
-import {TypeOrmModuleOptions} from '@nestjs/typeorm';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 /**
  * 数据库配置
  */
