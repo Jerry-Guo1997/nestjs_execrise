@@ -5,7 +5,6 @@ import {
     Get,
     Param,
     ParseUUIDPipe,
-    Patch,
     Post,
     Query,
     SerializeOptions,
@@ -15,16 +14,31 @@ import {
 
 import { AppIntercepter } from '@/modules/core/helpers/providers/app.interceptor';
 
-import { CreatePostDto, QueryPostDto, UpdatePostDto } from '../dtos';
-import { PostService } from '../services/post.service';
+import { CreateCommentDto, QueryCommentDto, QueryCommentTreeDto } from '../dtos';
+import { CommentService } from '../services';
 
 @UseInterceptors(AppIntercepter)
-@Controller('posts')
-export class PostController {
-    constructor(protected service: PostService) {}
+@Controller('comments')
+export class CommentController {
+    constructor(protected service: CommentService) {}
+
+    @Get('tree')
+    @SerializeOptions({ groups: ['comment-tree'] })
+    async tree(
+        @Query(
+            new ValidationPipe({
+                transform: true,
+                forbidUnknownValues: true,
+                validationError: { target: false },
+            }),
+        )
+        query: QueryCommentTreeDto,
+    ) {
+        return this.service.findTrees(query);
+    }
 
     @Get()
-    @SerializeOptions({ groups: ['post-list'] })
+    @SerializeOptions({ groups: ['comment-list'] })
     async list(
         @Query(
             new ValidationPipe({
@@ -33,54 +47,28 @@ export class PostController {
                 validationError: { target: false },
             }),
         )
-        options: QueryPostDto,
+        query: QueryCommentDto,
     ) {
-        return this.service.paginate(options);
-    }
-
-    @Get(':id')
-    @SerializeOptions({ groups: ['post-detail'] })
-    async detail(
-        @Param('id', new ParseUUIDPipe())
-        id: string,
-    ) {
-        return this.service.detail(id);
+        return this.service.paginate(query);
     }
 
     @Post()
-    @SerializeOptions({ groups: ['post-detail'] })
+    @SerializeOptions({ groups: ['comment-detail'] })
     async store(
         @Body(
             new ValidationPipe({
                 transform: true,
                 forbidUnknownValues: true,
                 validationError: { target: false },
-                groups: ['create'],
             }),
         )
-        data: CreatePostDto,
+        data: CreateCommentDto,
     ) {
         return this.service.create(data);
     }
 
-    @Patch()
-    @SerializeOptions({ groups: ['post-detail'] })
-    async update(
-        @Body(
-            new ValidationPipe({
-                transform: true,
-                forbidUnknownValues: true,
-                validationError: { target: false },
-                groups: ['update'],
-            }),
-        )
-        data: UpdatePostDto,
-    ) {
-        return this.service.update(data);
-    }
-
     @Delete(':id')
-    @SerializeOptions({ groups: ['post-detail'] })
+    @SerializeOptions({ groups: ['comment-detail'] })
     async delete(@Param('id', new ParseUUIDPipe()) id: string) {
         return this.service.delete(id);
     }

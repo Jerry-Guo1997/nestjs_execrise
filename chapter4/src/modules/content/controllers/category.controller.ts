@@ -15,16 +15,22 @@ import {
 
 import { AppIntercepter } from '@/modules/core/helpers/providers/app.interceptor';
 
-import { CreatePostDto, QueryPostDto, UpdatePostDto } from '../dtos';
-import { PostService } from '../services/post.service';
+import { CreateCategoryDto, QueryCategoryDto, UpdateCategoryDto } from '../dtos';
+import { CategoryService } from '../services';
 
 @UseInterceptors(AppIntercepter)
-@Controller('posts')
-export class PostController {
-    constructor(protected service: PostService) {}
+@Controller('categories')
+export class CategoryController {
+    constructor(protected service: CategoryService) {}
+
+    @Get('tree')
+    @SerializeOptions({ groups: ['category-tree'] })
+    async tree() {
+        return this.service.findTrees();
+    }
 
     @Get()
-    @SerializeOptions({ groups: ['post-list'] })
+    @SerializeOptions({ groups: ['category-list'] })
     async list(
         @Query(
             new ValidationPipe({
@@ -33,13 +39,13 @@ export class PostController {
                 validationError: { target: false },
             }),
         )
-        options: QueryPostDto,
+        options: QueryCategoryDto,
     ) {
         return this.service.paginate(options);
     }
 
     @Get(':id')
-    @SerializeOptions({ groups: ['post-detail'] })
+    @SerializeOptions({ groups: ['category-detail'] })
     async detail(
         @Param('id', new ParseUUIDPipe())
         id: string,
@@ -48,7 +54,7 @@ export class PostController {
     }
 
     @Post()
-    @SerializeOptions({ groups: ['post-detail'] })
+    @SerializeOptions({ groups: ['category-detail'] })
     async store(
         @Body(
             new ValidationPipe({
@@ -58,13 +64,13 @@ export class PostController {
                 groups: ['create'],
             }),
         )
-        data: CreatePostDto,
+        data: CreateCategoryDto,
     ) {
         return this.service.create(data);
     }
 
     @Patch()
-    @SerializeOptions({ groups: ['post-detail'] })
+    @SerializeOptions({ groups: ['category-detail'] })
     async update(
         @Body(
             new ValidationPipe({
@@ -74,13 +80,13 @@ export class PostController {
                 groups: ['update'],
             }),
         )
-        data: UpdatePostDto,
+        data: UpdateCategoryDto,
     ) {
         return this.service.update(data);
     }
 
     @Delete(':id')
-    @SerializeOptions({ groups: ['post-detail'] })
+    @SerializeOptions({ groups: ['category-detail'] })
     async delete(@Param('id', new ParseUUIDPipe()) id: string) {
         return this.service.delete(id);
     }
