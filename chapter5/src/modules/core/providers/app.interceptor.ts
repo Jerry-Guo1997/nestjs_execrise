@@ -1,15 +1,11 @@
-import {
-    ClassSerializerContextOptions,
-    ClassSerializerInterceptor,
-    PlainLiteralObject,
-    StreamableFile,
-} from '@nestjs/common';
+import { ClassSerializerInterceptor, PlainLiteralObject, StreamableFile } from '@nestjs/common';
+import { ClassTransformOptions } from '@nestjs/common/interfaces/external/class-transform-options.interface';
 import { isArray, isNil, isObject } from 'lodash';
 
 export class AppIntercepter extends ClassSerializerInterceptor {
     serialize(
         response: PlainLiteralObject | PlainLiteralObject[],
-        options: ClassSerializerContextOptions,
+        options: ClassTransformOptions,
     ): PlainLiteralObject | PlainLiteralObject[] {
         if ((!isObject(response) && !isArray(response)) || response instanceof StreamableFile) {
             return response;
