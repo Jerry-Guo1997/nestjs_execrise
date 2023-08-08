@@ -73,7 +73,7 @@ export class CommentService {
     }
 
     protected async getPost(id: string) {
-        return !isNil(id) ? this.repository.findOneOrFail({ where: { id } }) : id;
+        return !isNil(id) ? this.postRepository.findOneOrFail({ where: { id } }) : id;
     }
 
     protected async getParent(current?: string, id?: string) {

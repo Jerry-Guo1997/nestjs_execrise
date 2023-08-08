@@ -17,7 +17,7 @@ import { PostSubscriber } from './subscribers';
     controllers: Object.values(controllers),
     providers: [...Object.values(services), PostSubscriber],
     exports: [
-        ...Object.values(services), 
+        ...Object.values(services),
         DatabaseModule.forRepository(Object.values(repositories)),
     ],
 })
