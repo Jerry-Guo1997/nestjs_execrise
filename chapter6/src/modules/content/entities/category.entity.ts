@@ -5,7 +5,7 @@ import {
     Entity,
     ManyToMany,
     PrimaryColumn,
-    //PrimaryGeneratedColumn,
+    // PrimaryGeneratedColumn,
     Tree,
     TreeChildren,
     TreeParent,
@@ -18,7 +18,7 @@ import { PostEntity } from './post.entity';
 @Entity('content_categories')
 export class CategoryEntity extends BaseEntity {
     @Expose()
-    //@PrimaryGeneratedColumn('uuid')
+    // @PrimaryGeneratedColumn('uuid')
     @PrimaryColumn({ type: 'varchar', generated: 'uuid', length: 36 })
     id!: string;
 

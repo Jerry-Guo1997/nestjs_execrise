@@ -5,8 +5,8 @@ import {
     CreateDateColumn,
     Entity,
     ManyToOne,
-    PrimaryGeneratedColumn,
-    //PrimaryColumn,
+    //PrimaryGeneratedColumn,
+    PrimaryColumn,
     Tree,
     TreeChildren,
     TreeParent,
@@ -19,9 +19,9 @@ import { PostEntity } from './post.entity';
 @Entity('content_comments')
 export class CommentEntity extends BaseEntity {
     @Expose()
-    @PrimaryGeneratedColumn('uuid')
-    //@PrimaryColumn({ type: 'varchar', generated: 'uuid', length: 36 })
-    id: string;
+    //@PrimaryGeneratedColumn('uuid',)
+    @PrimaryColumn({ type: 'varchar', generated: 'uuid', length: 36 })
+    id?: string;
 
     @Expose()
     @Column({ comment: '评论内容', type: 'longtext' })

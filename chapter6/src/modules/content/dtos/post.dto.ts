@@ -23,6 +23,8 @@ import { toBoolean } from '@/modules/core/helpers';
 import { PaginateOptions } from '@/modules/database/types';
 
 import { PostOrderType } from '../constants';
+import { IsDataExist } from '@/modules/database/constraints';
+import { CategoryEntity } from '../entities';
 
 /**
  * 文章分页查询验证
@@ -52,6 +54,9 @@ export class QueryPostDto implements PaginateOptions {
     @IsOptional()
     limit = 10;
 
+    @IsDataExist(CategoryEntity, {
+        message: '指定的分类不存在',
+    })
     @IsUUID(undefined, { message: '分类ID格式错误' })
     @IsOptional()
     category?: string;
@@ -95,6 +100,11 @@ export class CreatePostDto {
     @IsOptional({ always: true })
     keywords?: string[];
 
+    @IsDataExist(CategoryEntity,{
+        each: true,
+        always: true,
+        message: '分类不存在',
+    })
     @IsUUID(undefined, {
         each: true,
         always: true,
