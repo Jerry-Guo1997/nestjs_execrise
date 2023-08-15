@@ -17,7 +17,12 @@ export class CategoryRepository extends TreeRepository<CategoryEntity> {
     /**
      * 查询树形分类
      */
-    async findTrees(options?: FindTreeOptions) {
+    async findTrees(
+        options?: FindTreeOptions & {
+            onlyTrashed?: boolean;
+            withTrashed?: boolean;
+        },
+    ) {
         const roots = await this.findRoots(options);
         await Promise.all(roots.map((root) => this.findDescendantsTree(root, options)));
         return roots;
@@ -27,7 +32,12 @@ export class CategoryRepository extends TreeRepository<CategoryEntity> {
      * 查询顶级分类
      * @param options
      */
-    findRoots(options?: FindTreeOptions) {
+    findRoots(
+        options?: FindTreeOptions & {
+            onlyTrashed?: boolean;
+            withTrashed?: boolean;
+        },
+    ) {
         const escapeAlias = (alias: string) => this.manager.connection.driver.escape(alias);
         const escapeColumn = (column: string) => this.manager.connection.driver.escape(column);
 
@@ -37,9 +47,82 @@ export class CategoryRepository extends TreeRepository<CategoryEntity> {
         const qb = this.buildBaseQB().orderBy('category.customOrder', 'ASC');
         qb.where(`${escapeAlias('category')}.${escapeColumn(parentPropertyName)} IS NULL`);
         FindOptionsUtils.applyOptionsToTreeQueryBuilder(qb, pick(options, ['relations', 'depth']));
+        if(options?.withTrashed){
+            qb.withDeleted();
+            if(options?.onlyTrashed) qb.where(`category.deletedAt IS NOT NULL` );
+        }
         return qb.getMany();
     }
 
+    /**
+     * 查询后代元素
+     * @param entity 
+     * @param options 
+     * @returns 
+     */
+    findDescendants(
+        entity: CategoryEntity,
+        options?: FindTreeOptions & {
+            onlyTrashed?: boolean;
+            withTrashed?: boolean;
+        },
+    ){
+        const qb = this.createDescendantsQueryBuilder('category', 'treeClosure', entity);
+        FindOptionsUtils.applyOptionsToTreeQueryBuilder(qb, options);
+        qb.orderBy(`category.cunstomOrder`, 'ASC');
+        if(options?.withTrashed){
+            qb.withDeleted();
+            if(options?.onlyTrashed) qb.where(`category.deletedAt IS NOT NULL`);
+        }
+        return qb.getMany();
+    }
+
+    /**
+     * 查询祖先元素
+     * @param entity 
+     * @param options 
+     * @returns 
+     */
+    findAncestors(
+        entity: CategoryEntity,
+        options?: FindTreeOptions & {
+            onlyTrashed?: boolean;
+            withTrashed?: boolean;
+        },
+    ){
+        const qb = this.createAncestorsQueryBuilder('category','treeClosure',entity)
+        FindOptionsUtils.applyOptionsToTreeQueryBuilder(qb, options);
+        qb.orderBy(`category.cunstomOrder`, 'ASC');
+        if(options?.withTrashed){
+            qb.withDeleted();
+            if(options?.onlyTrashed) qb.where(`category.deletedAt IS NOT NULL`);
+        }
+        return qb.getMany();
+    }
+
+    async countDescendants(
+        entity:CategoryEntity,
+        options?: {withTrashed?: boolean; onlyTrashed?: boolean},
+    ){
+        const qb = this.createDescendantsQueryBuilder('category','treeClosure', entity);
+        if(options?.withTrashed){
+            qb.withDeleted();
+            if(options.onlyTrashed) qb.where(`category.deletedAt IS NOT NULL`);
+        }
+        return qb.getCount();
+    }
+
+    async countAncestors(
+        entity: CategoryEntity,
+        options?: {withTrashed?: boolean, onlyTrashed?: boolean},
+    ){
+        const qb = this.createAncestorsQueryBuilder('category','treeClosure', entity);
+        if(options?.withTrashed){
+            qb.withDeleted();
+            if(options?.onlyTrashed) qb.where(`category.deletedAt IS NOT NULL`);
+        }
+        return qb.getCount();
+    }
     /**
      * 创建后代查询器
      */

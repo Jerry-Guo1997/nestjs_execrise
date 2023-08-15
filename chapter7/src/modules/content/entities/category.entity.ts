@@ -2,6 +2,7 @@ import { Exclude, Expose, Type } from 'class-transformer';
 import {
     BaseEntity,
     Column,
+    DeleteDateColumn,
     Entity,
     ManyToMany,
     PrimaryColumn,
@@ -45,4 +46,11 @@ export class CategoryEntity extends BaseEntity {
 
     @ManyToMany((type) => PostEntity, (post) => post.categories)
     posts!: PostEntity[];
+
+    @Expose()
+    @Type(() => Date)
+    @DeleteDateColumn({
+        comment: '删除时间',
+    })
+    deletedAt: Date;
 }

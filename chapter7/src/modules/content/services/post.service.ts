@@ -3,17 +3,22 @@ import { isArray, isFunction, isNil, omit } from 'lodash';
 import { EntityNotFoundError, In, IsNull, Not, SelectQueryBuilder } from 'typeorm';
 
 import { paginate } from '@/modules/database/helpers';
-import { QueryHook, PaginateOptions } from '@/modules/database/types';
+import { QueryHook } from '@/modules/database/types';
 
 import { PostOrderType } from '../constants';
 
-import { CreatePostDto, UpdatePostDto } from '../dtos';
+import { CreatePostDto, QueryPostDto, UpdatePostDto } from '../dtos';
 import { PostEntity } from '../entities/post.entity';
 import { CategoryRepository } from '../repositories';
 import { PostRepository } from '../repositories/post.repository';
 
 import { CategoryService } from './category.service';
+import { SelectTrashMode } from '@/modules/database/constants';
 
+// 文章查询接口
+type FindParams = {
+    [key in keyof Omit<QueryPostDto, 'limit' | 'page'> ] : QueryPostDto[key];
+};
 @Injectable()
 export class PostService {
     constructor(
@@ -28,7 +33,7 @@ export class PostService {
      * @param callback 添加额外的查询
      * @returns
      */
-    async paginate(options: PaginateOptions, callback?: QueryHook<PostEntity>) {
+    async paginate(options: QueryPostDto, callback?: QueryHook<PostEntity>) {
         const qb = await this.buildListQuery(this.repository.buildBaseQB(), options, callback);
         return paginate(qb, options);
     }
@@ -74,17 +79,49 @@ export class PostService {
         return this.detail(data.id);
     }
 
-    async delete(id: string) {
-        const item = await this.repository.findOneByOrFail({ id });
-        return this.repository.remove(item);
+    async delete(ids: string[], trash?: boolean) {
+        const items = await this.repository.find({ 
+            where: {id: In(ids) } as any,
+            withDeleted: true,
+        });
+        if(trash){
+            const directs = items.filter((item) => !isNil(item.deletedAt));
+            const softs = items.filter((item) => isNil(item.deletedAt));
+            return [
+                ...(await this.repository.remove(directs)),
+                ...(await this.repository.softRemove(softs)),
+            ];
+        }
+        return this.repository.remove(items);
+    }
+
+    async restore(ids: string[]){
+        const items = await this.repository.find({
+            where: {id: In(ids) } as any,
+            withDeleted: true,
+        });
+        //过滤掉不在回收站中的数据
+        const trasheds = items.filter((item) => !isNil(item)).map((item) => item.id);
+        if(trasheds.length < 0)return [];
+        await this.repository.restore(trasheds);
+        const qb = await this.buildListQuery(this.repository.buildBaseQB(), {}, async(qbuilder) =>
+            qbuilder.andWhereInIds(trasheds),
+        );
+        return qb.getMany();
     }
 
     protected async buildListQuery(
         qb: SelectQueryBuilder<PostEntity>,
-        options: Record<string, any>,
+        options: FindParams,
         callback?: QueryHook<PostEntity>,
     ) {
-        const { category, orderBy, isPublished } = options;
+        const { category, orderBy, isPublished, trashed = SelectTrashMode.NONE } = options;
+        // 是否查询回收站
+        if (trashed === SelectTrashMode.ALL || trashed === SelectTrashMode.ONLY){
+            qb.withDeleted();
+            if(trashed === SelectTrashMode.ONLY) 
+                qb.where(`post.deletedAt is not null`);
+        }
         let newQb = qb;
         if (typeof isPublished === 'boolean') {
             newQb = isPublished

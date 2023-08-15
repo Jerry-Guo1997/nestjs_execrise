@@ -37,7 +37,7 @@ export const paginate = async <E extends ObjectLiteral>(
 /**
  * 数据手动分页函数
  */
-export function treePaginate<E extends ObjectLiteral>(
+export function manualPaginate<E extends ObjectLiteral>(
     options: PaginateOptions,
     data: E[],
 ): PaginateReturn<E> {

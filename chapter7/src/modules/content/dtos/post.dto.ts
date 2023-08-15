@@ -25,6 +25,7 @@ import { PaginateOptions } from '@/modules/database/types';
 import { PostOrderType } from '../constants';
 import { IsDataExist } from '@/modules/database/constraints';
 import { CategoryEntity } from '../entities';
+import { SelectTrashMode } from '@/modules/database/constants';
 
 /**
  * 文章分页查询验证
@@ -60,6 +61,10 @@ export class QueryPostDto implements PaginateOptions {
     @IsUUID(undefined, { message: '分类ID格式错误' })
     @IsOptional()
     category?: string;
+
+    @IsEnum(SelectTrashMode)
+    @IsOptional()
+    trashed?: SelectTrashMode;
 }
 
 /**
