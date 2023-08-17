@@ -4,7 +4,7 @@ import { isNil } from 'lodash';
 
 import { EntityNotFoundError, In, SelectQueryBuilder } from 'typeorm';
 
-import { treePaginate } from '@/modules/database/helpers';
+import { manualPaginate } from '@/modules/database/helpers';
 
 import { CreateCommentDto, QueryCommentDto, QueryCommentTreeDto } from '../dtos/comment.dto';
 import { CommentEntity } from '../entities';
@@ -51,7 +51,7 @@ export class CommentService {
             );
         }
         comments = await this.repository.toFlatTrees(comments);
-        return treePaginate(query, comments);
+        return manualPaginate(query, comments);
     }
 
     async create(data: CreateCommentDto) {
