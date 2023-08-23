@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { isArray, isFunction, isNil, omit } from 'lodash';
 import { EntityNotFoundError, In, IsNull, Not, SelectQueryBuilder } from 'typeorm';
 
-import { paginate } from '@/modules/database/helpers';
+import { manualPaginate, paginate } from '@/modules/database/helpers';
 import { QueryHook } from '@/modules/database/types';
 
 import { PostOrderType } from '../constants';
@@ -14,10 +14,12 @@ import { PostRepository } from '../repositories/post.repository';
 
 import { CategoryService } from './category.service';
 import { SelectTrashMode } from '@/modules/database/constants';
+import { SearchService } from './search.service';
+import { SearchType } from '../types';
 
 // 文章查询接口
 type FindParams = {
-    [key in keyof Omit<QueryPostDto, 'limit' | 'page'> ] : QueryPostDto[key];
+    [key in keyof Omit<QueryPostDto, 'limit' | 'page'>]: QueryPostDto[key];
 };
 @Injectable()
 export class PostService {
@@ -25,7 +27,9 @@ export class PostService {
         protected repository: PostRepository,
         protected categoryRepository: CategoryRepository,
         protected categoryService: CategoryService,
-    ) {}
+        protected searchService?: SearchService,
+        protected search_type: SearchType = 'against',
+    ) { }
 
     /**
      * 获取分页数据
@@ -34,6 +38,13 @@ export class PostService {
      * @returns
      */
     async paginate(options: QueryPostDto, callback?: QueryHook<PostEntity>) {
+        if (!isNil(this.searchService) && !isNil(options.search) && this.search_type === 'elastic') {
+            const { search: text, page, limit } = options;
+            const results = await this.searchService.search(text);
+            const ids = results.map((result) => result.id);
+            const posts = ids.length <= 0 ? [] : await this.repository.find({ where: { id: In(ids) } });
+            return manualPaginate({ page, limit }, posts);
+        }
         const qb = await this.buildListQuery(this.repository.buildBaseQB(), options, callback);
         return paginate(qb, options);
     }
@@ -58,11 +69,18 @@ export class PostService {
             ...data,
             categories: isArray(data.categories)
                 ? await this.categoryRepository.findBy({
-                      id: In(data.categories),
-                  })
+                    id: In(data.categories),
+                })
                 : [],
         };
         const item = await this.repository.save(createPostDto);
+        if (!isNil(this.searchService)) {
+            try {
+                await this.searchService.create(item);
+            } catch (err) {
+                throw new InternalServerErrorException(err);
+            }
+        }
         return this.detail(item.id);
     }
 
@@ -76,35 +94,60 @@ export class PostService {
                 .addAndRemove(data.categories, post.categories ?? []);
         }
         await this.repository.update(data.id, omit(data, ['id', 'categories']));
+        if (!isNil(this.searchService)) {
+            try {
+                await this.searchService.update(post);
+            } catch (err) {
+                throw new InternalServerErrorException(err);
+            }
+        }
         return this.detail(data.id);
     }
 
     async delete(ids: string[], trash?: boolean) {
-        const items = await this.repository.find({ 
-            where: {id: In(ids) } as any,
+        const items = await this.repository.find({
+            where: { id: In(ids) } as any,
             withDeleted: true,
         });
-        if(trash){
+        let result: PostEntity[]|any = [];
+        if (trash) {
             const directs = items.filter((item) => !isNil(item.deletedAt));
             const softs = items.filter((item) => isNil(item.deletedAt));
-            return [
+            result = [
                 ...(await this.repository.remove(directs)),
                 ...(await this.repository.softRemove(softs)),
             ];
+        } else {
+            result = this.repository.remove(items);
         }
-        return this.repository.remove(items);
+        if (!isNil(this.searchService)) {
+            try {
+                for (const id of ids) await this.searchService.remove(id);
+            } catch (err) {
+                throw new InternalServerErrorException(err);
+            }
+        }
+        return result;
     }
 
-    async restore(ids: string[]){
+    async restore(ids: string[]) {
         const items = await this.repository.find({
-            where: {id: In(ids) } as any,
+            where: { id: In(ids) } as any,
             withDeleted: true,
         });
         //过滤掉不在回收站中的数据
-        const trasheds = items.filter((item) => !isNil(item)).map((item) => item.id);
-        if(trasheds.length < 0)return [];
-        await this.repository.restore(trasheds);
-        const qb = await this.buildListQuery(this.repository.buildBaseQB(), {}, async(qbuilder) =>
+        const trasheds = items.filter((item) => !isNil(item));
+        if (trasheds.length < 0) return [];
+        await this.repository.restore(trasheds.map((item) => item.id));
+
+        if (!isNil(this.searchService)) {
+            try {
+                for (const id of trasheds) await this.searchService.create(id);
+            } catch (err) {
+                throw new InternalServerErrorException(err);
+            }
+        }
+        const qb = await this.buildListQuery(this.repository.buildBaseQB(), {}, async (qbuilder) =>
             qbuilder.andWhereInIds(trasheds),
         );
         return qb.getMany();
@@ -115,29 +158,43 @@ export class PostService {
         options: FindParams,
         callback?: QueryHook<PostEntity>,
     ) {
-        const { category, orderBy, isPublished, trashed = SelectTrashMode.NONE } = options;
+        const { category, orderBy, isPublished, search, trashed = SelectTrashMode.NONE } = options;
         // 是否查询回收站
-        if (trashed === SelectTrashMode.ALL || trashed === SelectTrashMode.ONLY){
+        if (trashed === SelectTrashMode.ALL || trashed === SelectTrashMode.ONLY) {
             qb.withDeleted();
-            if(trashed === SelectTrashMode.ONLY) 
+            if (trashed === SelectTrashMode.ONLY)
                 qb.where(`post.deletedAt is not null`);
         }
-        let newQb = qb;
+        //let newQb = qb;
         if (typeof isPublished === 'boolean') {
-            newQb = isPublished
-                ? newQb.where({
-                      publishAt: Not(IsNull()),
-                  })
-                : newQb.where({
-                      publishedAt: IsNull(),
-                  });
+            isPublished
+                ? qb.where({
+                    publishAt: Not(IsNull()),
+                })
+                : qb.where({
+                    publishedAt: IsNull(),
+                });
         }
-        newQb = this.queryOrderBy(newQb, orderBy);
+
+        if (!isNil(search)) {
+            if (this.search_type === 'like') {
+                qb.andWhere('title LIKE :search', { search: `%${search}%` })
+                    .orWhere('body LIKE :search', { search: `%${search}%` })
+                    .orWhere('summary LIKE :search', { search: `%${search}%` })
+                    .orWhere('post.categories LIKE :search', { search: `%${search}%` });
+            } else {
+                qb.andWhere('Match(title) AGAINST (:search IN BOOLEAN MODE)', { search: `${search}*` })
+                    .orWhere('Match(body) AGAINST (:search IN BOOLEAN MODE)', { search: `${search}*` })
+                    .orWhere('Match(summary) AGAINST (:search IN BOOLEAN MODE)', { search: `${search}*` })
+                    .orWhere('Match(categories.name) AGAINST (:search IN BOOLEAN MODE)', { search: `${search}*` });
+            }
+        }
+        this.queryOrderBy(qb, orderBy);
         if (category) {
-            newQb = await this.queryByCategory(category, newQb);
+            await this.queryByCategory(category, qb);
         }
-        if (callback) return callback(newQb);
-        return newQb;
+        if (callback) return callback(qb);
+        return qb;
     }
 
     protected queryOrderBy(qb: SelectQueryBuilder<PostEntity>, orderBy?: PostOrderType) {

@@ -9,9 +9,14 @@ import { AppPipe } from './modules/core/providers/app.pipe';
 import { DatabaseModule } from './modules/database/database.module';
 import { ElasticModule } from './modules/elastic/elastic.module';
 import { elastic } from './config/elastic.config';
+import { content } from './config/content.config';
 
 @Module({
-    imports: [DatabaseModule.forRoot(database), ElasticModule.forRoot(elastic), ContentModule],
+    imports: [
+        DatabaseModule.forRoot(database), 
+        ElasticModule.forRoot(elastic), 
+        ContentModule.forRoot(content),
+    ],
     providers: [
         {
             provide: APP_PIPE,
