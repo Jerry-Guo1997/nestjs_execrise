@@ -2,25 +2,27 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { isNil } from 'lodash';
 
-import { EntityNotFoundError, In, SelectQueryBuilder } from 'typeorm';
-
-import { manualPaginate } from '@/modules/database/helpers';
+import { EntityNotFoundError, SelectQueryBuilder } from 'typeorm';
 
 import { CreateCommentDto, QueryCommentDto, QueryCommentTreeDto } from '../dtos/comment.dto';
 import { CommentEntity } from '../entities';
 
 import { CommentRepository, PostRepository } from '../repositories';
+import { BaseService } from '@/modules/database/base/service';
+
 
 @Injectable()
-export class CommentService {
+export class CommentService extends BaseService<CommentEntity, CommentRepository>{
     constructor(
         protected repository: CommentRepository,
         protected postRepository: PostRepository,
-    ) {}
+    ) {
+        super(repository);
+    }
 
     async findTrees(options: QueryCommentTreeDto = {}) {
         return this.repository.findTrees({
-            addQuery: (qb) => {
+            addQuery: async (qb) => {
                 return isNil(options.post) ? qb : qb.where('post.id = :id', { id: options.post });
             },
         });
@@ -31,27 +33,17 @@ export class CommentService {
      * @param dto
      * @returns
      */
-    async paginate(dto: QueryCommentDto) {
-        const { post, ...query } = dto;
+    async paginate(options: QueryCommentDto) {
+        const { post } = options;
         const addQuery = (qb: SelectQueryBuilder<CommentEntity>) => {
             const condition: Record<string, string> = {};
             if (!isNil(post)) condition.post = post;
             return Object.keys(condition).length > 0 ? qb.andWhere(condition) : qb;
         };
-        const data = await this.repository.findRoots({
+        return super.paginate({
+            ...options,
             addQuery,
         });
-        let comments: CommentEntity[] = [];
-        for (let i = 0; i < data.length; i++) {
-            const c = data[i];
-            comments.push(
-                await this.repository.findDescendantsTree(c, {
-                    addQuery,
-                }),
-            );
-        }
-        comments = await this.repository.toFlatTrees(comments);
-        return manualPaginate(query, comments);
     }
 
     async create(data: CreateCommentDto) {
@@ -67,10 +59,6 @@ export class CommentService {
         return this.repository.findOneOrFail({ where: { id: item.id } });
     }
 
-    async delete(ids: string[]) {
-        const comments = await this.repository.find({ where: { id: In(ids) } });
-        return this.repository.remove(comments);
-    }
 
     protected async getPost(id: string) {
         return !isNil(id) ? this.postRepository.findOneOrFail({ where: { id } }) : id;

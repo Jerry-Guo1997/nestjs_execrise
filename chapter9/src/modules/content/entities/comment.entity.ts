@@ -1,27 +1,21 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 import {
-    BaseEntity,
     Column,
     CreateDateColumn,
     Entity,
     ManyToOne,
-    //PrimaryGeneratedColumn,
-    PrimaryColumn,
     Tree,
     TreeChildren,
     TreeParent,
 } from 'typeorm';
 
 import { PostEntity } from './post.entity';
+import { BaseEntity } from '@/modules/database/base'
 
 @Exclude()
 @Tree('materialized-path')
 @Entity('content_comments')
 export class CommentEntity extends BaseEntity {
-    @Expose()
-    //@PrimaryGeneratedColumn('uuid',)
-    @PrimaryColumn({ type: 'varchar', generated: 'uuid', length: 36 })
-    id?: string;
 
     @Expose()
     @Column({ comment: '评论内容', type: 'longtext' })

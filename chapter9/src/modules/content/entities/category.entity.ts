@@ -1,12 +1,12 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 import {
-    BaseEntity,
+    //BaseEntity,
     Column,
     DeleteDateColumn,
     Entity,
     Index,
     ManyToMany,
-    PrimaryColumn,
+    //PrimaryColumn,
     // PrimaryGeneratedColumn,
     Tree,
     TreeChildren,
@@ -14,15 +14,12 @@ import {
 } from 'typeorm';
 
 import { PostEntity } from './post.entity';
+import { BaseEntity } from '@/modules/database/base';
 
 @Exclude()
 @Tree('materialized-path')
 @Entity('content_categories')
 export class CategoryEntity extends BaseEntity {
-    @Expose()
-    // @PrimaryGeneratedColumn('uuid')
-    @PrimaryColumn({ type: 'varchar', generated: 'uuid', length: 36 })
-    id!: string;
 
     @Expose()
     @Column({ comment: '分类名称' })

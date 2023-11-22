@@ -2,20 +2,23 @@ import { Injectable } from '@nestjs/common';
 
 import { isNil, omit } from 'lodash';
 
-import { EntityNotFoundError, In } from 'typeorm';
+import { EntityNotFoundError} from 'typeorm';
 
-import { manualPaginate } from '@/modules/database/helpers';
-
-import { CreateCategoryDto, QueryCategoryDto, QueryCategoryTreeDto, UpdateCategoryDto } from '../dtos/category.dto';
+import { CreateCategoryDto, QueryCategoryTreeDto, UpdateCategoryDto } from '../dtos/category.dto';
 
 import { CategoryEntity } from '../entities';
 
 import { CategoryRepository } from '../repositories';
 import { SelectTrashMode } from '@/modules/database/constants';
+import { BaseService } from '@/modules/database/base/service';
 
 @Injectable()
-export class CategoryService {
-    constructor(protected repository: CategoryRepository) {}
+export class CategoryService extends BaseService<CategoryEntity, CategoryRepository>{
+    protected enableTrash = true;
+
+    constructor(protected repository: CategoryRepository) {
+        super(repository);
+    }
 
     /**
      *
@@ -29,19 +32,6 @@ export class CategoryService {
         });
     }
 
-    async paginate(options: QueryCategoryDto) {
-        const {trashed = SelectTrashMode.NONE} = options;
-        const tree = await this.repository.findTrees({
-            withTrashed: trashed === SelectTrashMode.ALL || trashed === SelectTrashMode.ONLY,
-            onlyTrashed: trashed === SelectTrashMode.ONLY,
-        });
-        const data = await this.repository.toFlatTrees(tree);
-        return manualPaginate(options, data);
-    }
-
-    async detail(id: string) {
-        return this.repository.findOneByOrFail({ id });
-    }
 
     async create(data: CreateCategoryDto) {
         const item = await this.repository.save({
@@ -70,33 +60,6 @@ export class CategoryService {
         return cat;
     }
 
-    async delete(ids: string[], trash?: boolean) {
-        const items = await this.repository.find({
-            where: { id: In(ids) },
-            withDeleted: true,
-            relations: ['parent', 'children'],
-        });
-        for(const item of items){
-            if (!isNil(item.children) && item.children.length > 0) {
-                const nchildren = [...item.children].map((c) => {
-                    c.parent = item.parent;
-                    return item;
-                });
-    
-                await this.repository.save(nchildren);
-            }
-        }
-        if(trash){
-            const directs = items.filter((item) => !isNil(item.deletedAt));
-            const softs = items.filter((item) => isNil(item.deletedAt));
-            return [
-                ...(await this.repository.remove(directs)),
-                ...(await this.repository.softRemove(softs)),
-            ];
-        }
-        
-        return this.repository.remove(items);
-    }
 
     protected async getParent(current?: string, id?: string) {
         if (current === id) return undefined;
@@ -110,17 +73,4 @@ export class CategoryService {
         return parent;
     }
 
-    async restore(ids: string[]){
-        const items = await this.repository.find({
-            where: {id: In(ids) } as any,
-            withDeleted: true,
-        });
-        //过滤掉不在回收站中的数据
-        const trasheds = items.filter((item) => !isNil(item)).map((item) => item.id);
-        if(trasheds.length < 0)return [];
-        await this.repository.restore(trasheds);
-        const qb = await this.repository.buildBaseQB();
-        qb.andWhereInIds(trasheds);
-        return qb.getMany();
-    }
 }

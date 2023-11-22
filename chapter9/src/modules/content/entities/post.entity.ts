@@ -1,6 +1,5 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 import {
-    BaseEntity,
     Column,
     CreateDateColumn,
     DeleteDateColumn,
@@ -9,8 +8,6 @@ import {
     JoinTable,
     ManyToMany,
     OneToMany,
-    PrimaryColumn,
-    // PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
 
@@ -18,14 +15,11 @@ import { PostBodyType } from '../constants';
 
 import { CategoryEntity } from './category.entity';
 import { CommentEntity } from './comment.entity';
+import { BaseEntity } from '@/modules/database/base';
 
 @Exclude()
 @Entity('content_posts')
 export class PostEntity extends BaseEntity {
-    // @PrimaryGeneratedColumn('uuid')
-    @Expose()
-    @PrimaryColumn({ type: 'varchar', generated: 'uuid', length: 36 })
-    id!: string;
 
     @Expose()
     @Column({ comment: '文章标题' })
